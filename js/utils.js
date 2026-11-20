@@ -1,9 +1,7 @@
 /**
  * js/utils.js
  * Pure utility functions extracted from js/app.js for testability.
- * This file is an ES module and is imported by the property-based tests.
- * The functions here are identical to those in app.js Section 1 and
- * the timer tick logic from Section 4.
+ * This file is an ES module and is imported by property-based and unit tests.
  */
 
 /**
@@ -48,13 +46,14 @@ export function getGreeting(hour) {
 }
 
 /**
- * Returns MM:SS zero-padded for a total-seconds value in [0, 1500].
+ * Returns MM:SS zero-padded for a total-seconds value.
  * @param {number} totalSeconds
  * @returns {string}
  */
 export function formatTimer(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
@@ -127,11 +126,60 @@ export function deserializeLinks(json) {
 /**
  * Pure tick function: given a remaining-seconds value, returns the new
  * value after one timer tick. Never goes below 0.
- * This mirrors the core logic of TimerModule._tick() (Section 4).
  * @param {number} remainingSeconds
  * @returns {number}
  */
 export function timerTick(remainingSeconds) {
   if (remainingSeconds <= 0) return 0;
   return remainingSeconds - 1;
+}
+
+/**
+ * Checks if a task description already exists in the task list (case-insensitive & trimmed).
+ * Optionally ignores a specific task ID (useful when editing).
+ * @param {Object[]} tasks - List of task objects with description and id
+ * @param {string} description - The description to check
+ * @param {string} [excludeId] - Optional task ID to exclude from check
+ * @returns {boolean}
+ */
+export function isDuplicateTask(tasks, description, excludeId = null) {
+  if (!Array.isArray(tasks) || typeof description !== 'string') return false;
+  const normalized = description.trim().toLowerCase();
+  if (normalized.length === 0) return false;
+
+  return tasks.some(task => {
+    if (excludeId && task.id === excludeId) return false;
+    return typeof task.description === 'string' && task.description.trim().toLowerCase() === normalized;
+  });
+}
+
+/**
+ * Pure function to sort a list of tasks without mutating the input array.
+ * Modes:
+ *   - 'default': Original order as created
+ *   - 'az': Alphabetical ascending by description
+ *   - 'za': Alphabetical descending by description
+ *   - 'incomplete': Incomplete tasks first, then completed
+ *   - 'completed': Completed tasks first, then incomplete
+ * @param {Object[]} tasks
+ * @param {string} mode
+ * @returns {Object[]}
+ */
+export function sortTasks(tasks, mode = 'default') {
+  if (!Array.isArray(tasks)) return [];
+  const copy = [...tasks];
+
+  switch (mode) {
+    case 'az':
+      return copy.sort((a, b) => (a.description || '').localeCompare(b.description || '', undefined, { sensitivity: 'base' }));
+    case 'za':
+      return copy.sort((a, b) => (b.description || '').localeCompare(a.description || '', undefined, { sensitivity: 'base' }));
+    case 'incomplete':
+      return copy.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    case 'completed':
+      return copy.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? -1 : 1));
+    case 'default':
+    default:
+      return copy;
+  }
 }

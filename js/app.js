@@ -1,5 +1,8 @@
 /* =============================================================
    js/app.js — To-Do List Life Dashboard
+   Interactive, User-Friendly Dashboard with Dark/Light Theme,
+   Custom Greeting Name, Pomodoro Duration Presets, Duplicate Task
+   Prevention, and Task Sorting.
    ============================================================= */
 
 /* -------------------------------------------------------------
@@ -48,13 +51,15 @@ function getGreeting(hour) {
 }
 
 /**
- * Returns MM:SS zero-padded for a total-seconds value in [0, 1500].
+ * Returns MM:SS zero-padded for a total-seconds value.
+ * Supports minutes > 25 (e.g. 50:00, 120:00).
  * @param {number} totalSeconds
  * @returns {string}
  */
 function formatTimer(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
@@ -74,6 +79,49 @@ function isValidURL(url) {
  */
 function isBlank(str) {
   return typeof str !== 'string' || str.trim().length === 0;
+}
+
+/**
+ * Checks if a task description already exists (case-insensitive & trimmed).
+ * @param {Task[]} tasks
+ * @param {string} description
+ * @param {string} [excludeId]
+ * @returns {boolean}
+ */
+function isDuplicateTask(tasks, description, excludeId = null) {
+  if (!Array.isArray(tasks) || typeof description !== 'string') return false;
+  const normalized = description.trim().toLowerCase();
+  if (normalized.length === 0) return false;
+
+  return tasks.some(function (task) {
+    if (excludeId && task.id === excludeId) return false;
+    return typeof task.description === 'string' && task.description.trim().toLowerCase() === normalized;
+  });
+}
+
+/**
+ * Pure function to sort tasks.
+ * @param {Task[]} tasks
+ * @param {string} mode
+ * @returns {Task[]}
+ */
+function sortTasks(tasks, mode = 'default') {
+  if (!Array.isArray(tasks)) return [];
+  const copy = [...tasks];
+
+  switch (mode) {
+    case 'az':
+      return copy.sort((a, b) => (a.description || '').localeCompare(b.description || '', undefined, { sensitivity: 'base' }));
+    case 'za':
+      return copy.sort((a, b) => (b.description || '').localeCompare(a.description || '', undefined, { sensitivity: 'base' }));
+    case 'incomplete':
+      return copy.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+    case 'completed':
+      return copy.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? -1 : 1));
+    case 'default':
+    default:
+      return copy;
+  }
 }
 
 /**
@@ -126,33 +174,25 @@ function deserializeLinks(json) {
 
 /* -------------------------------------------------------------
    Section 2: Storage Module
-   localStorage keys: tld_tasks (tasks), tld_links (links)
+   localStorage keys:
+   - tld_tasks: tasks list
+   - tld_links: quick links
+   - tld_theme: 'light' or 'dark'
+   - tld_user_name: custom user name string
+   - tld_timer_minutes: saved focus duration in minutes (number)
+   - tld_task_sort: 'default' | 'az' | 'za' | 'incomplete' | 'completed'
    ------------------------------------------------------------- */
 
 const StorageModule = (function () {
-  /** Callback registered by LinksModule to handle corrupt link data. */
   let _onCorruptLinks = null;
 
-  /**
-   * Register a callback that is invoked when tld_links data is found
-   * to be corrupt on load. LinksModule calls this during its init.
-   * @param {Function} callback
-   */
   function registerOnCorruptLinks(callback) {
     _onCorruptLinks = callback;
   }
 
-  /**
-   * Reads tld_tasks from localStorage.
-   * Returns [] when the key is absent or the stored value is corrupt
-   * (not valid JSON or not an array). Logs console.error on corruption.
-   * @returns {Task[]}
-   */
   function loadTasks() {
     const raw = localStorage.getItem('tld_tasks');
-    if (raw === null) {
-      return [];
-    }
+    if (raw === null) return [];
     const tasks = deserializeTasks(raw);
     if (tasks === null) {
       console.error('tld_tasks: corrupt data, initializing empty');
@@ -161,27 +201,19 @@ const StorageModule = (function () {
     return tasks;
   }
 
-  /**
-   * Writes the serialized task collection to tld_tasks.
-   * @param {Task[]} tasks
-   */
   function saveTasks(tasks) {
-    localStorage.setItem('tld_tasks', serializeTasks(tasks));
+    try {
+      localStorage.setItem('tld_tasks', serializeTasks(tasks));
+      return true;
+    } catch (err) {
+      console.error('Failed to save tasks:', err);
+      return false;
+    }
   }
 
-  /**
-   * Reads tld_links from localStorage.
-   * Returns [] when the key is absent or the stored value is corrupt.
-   * On corruption: logs console.error and invokes the registered
-   * onCorruptLinks callback (if any) so the Links widget can display
-   * an error message.
-   * @returns {Link[]}
-   */
   function loadLinks() {
     const raw = localStorage.getItem('tld_links');
-    if (raw === null) {
-      return [];
-    }
+    if (raw === null) return [];
     const links = deserializeLinks(raw);
     if (links === null) {
       console.error('tld_links: corrupt data, initializing empty');
@@ -193,13 +225,6 @@ const StorageModule = (function () {
     return links;
   }
 
-  /**
-   * Writes the serialized link collection to tld_links.
-   * Returns { ok: true } on success.
-   * Returns { ok: false } if the write throws (e.g. quota exceeded).
-   * @param {Link[]} links
-   * @returns {{ ok: boolean }}
-   */
   function saveLinks(links) {
     try {
       localStorage.setItem('tld_links', serializeLinks(links));
@@ -209,70 +234,277 @@ const StorageModule = (function () {
     }
   }
 
+  // Theme preferences
+  function loadTheme() {
+    return localStorage.getItem('tld_theme');
+  }
+
+  function saveTheme(theme) {
+    try {
+      localStorage.setItem('tld_theme', theme);
+    } catch (_) {}
+  }
+
+  // Custom User Name
+  function loadUserName() {
+    const name = localStorage.getItem('tld_user_name');
+    return typeof name === 'string' ? name.trim() : '';
+  }
+
+  function saveUserName(name) {
+    try {
+      if (!name || name.trim().length === 0) {
+        localStorage.removeItem('tld_user_name');
+      } else {
+        localStorage.setItem('tld_user_name', name.trim());
+      }
+    } catch (_) {}
+  }
+
+  // Pomodoro timer duration in minutes
+  function loadTimerMinutes() {
+    const raw = localStorage.getItem('tld_timer_minutes');
+    const parsed = parseInt(raw, 10);
+    return !isNaN(parsed) && parsed >= 1 && parsed <= 120 ? parsed : null;
+  }
+
+  function saveTimerMinutes(minutes) {
+    try {
+      localStorage.setItem('tld_timer_minutes', String(minutes));
+    } catch (_) {}
+  }
+
+  // Task sort mode
+  function loadTaskSort() {
+    return localStorage.getItem('tld_task_sort') || 'default';
+  }
+
+  function saveTaskSort(sortMode) {
+    try {
+      localStorage.setItem('tld_task_sort', sortMode);
+    } catch (_) {}
+  }
+
   return {
     registerOnCorruptLinks,
     loadTasks,
     saveTasks,
     loadLinks,
     saveLinks,
+    loadTheme,
+    saveTheme,
+    loadUserName,
+    saveUserName,
+    loadTimerMinutes,
+    saveTimerMinutes,
+    loadTaskSort,
+    saveTaskSort,
   };
 })();
 
 /* -------------------------------------------------------------
-   Section 3: Greeting Module
-   Displays current time, date, and a time-of-day greeting.
-   Updates every 60 seconds so threshold crossings are detected.
+   Section 3: Theme Module (Light / Dark Mode)
    ------------------------------------------------------------- */
 
-const GreetingModule = (function () {
-  /**
-   * Renders time, date, and greeting into the three child elements.
-   * @param {HTMLElement} root
-   * @param {Date} now
-   */
-  function _render(root, now) {
-    root.querySelector('.greeting-time').textContent    = formatTime(now);
-    root.querySelector('.greeting-date').textContent    = formatDate(now);
-    root.querySelector('.greeting-message').textContent = getGreeting(now.getHours());
+const ThemeModule = (function () {
+  let _themeBtn = null;
+  let _currentTheme = 'light';
+
+  function _applyTheme(theme) {
+    _currentTheme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    StorageModule.saveTheme(theme);
+
+    if (_themeBtn) {
+      const isDark = theme === 'dark';
+      const icon = _themeBtn.querySelector('.theme-icon');
+      const label = _themeBtn.querySelector('.theme-label');
+
+      if (icon) icon.textContent = isDark ? '☀️' : '🌙';
+      if (label) label.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      _themeBtn.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
   }
 
-  /**
-   * Initialises the Greeting widget.
-   * Renders immediately, then schedules re-render every 60 000 ms.
-   * @param {HTMLElement} root  — the #widget-greeting element
-   */
-  function init(root) {
-    _render(root, new Date());
-    setInterval(function () {
-      _render(root, new Date());
-    }, 60000);
+  function init() {
+    _themeBtn = document.getElementById('btn-theme-toggle');
+
+    // Determine initial theme: saved preference -> system dark mode -> default light
+    const saved = StorageModule.loadTheme();
+    const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = saved || (systemPrefersDark ? 'dark' : 'light');
+
+    _applyTheme(initialTheme);
+
+    if (_themeBtn) {
+      _themeBtn.addEventListener('click', function () {
+        const nextTheme = _currentTheme === 'dark' ? 'light' : 'dark';
+        _applyTheme(nextTheme);
+      });
+    }
+
+    // Listen to OS theme changes if user has not explicitly chosen one
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+        if (!StorageModule.loadTheme()) {
+          _applyTheme(e.matches ? 'dark' : 'light');
+        }
+      });
+    }
   }
 
   return { init };
 })();
 
 /* -------------------------------------------------------------
-   Section 4: Timer Module
-   25-minute countdown timer with Start, Stop, and Reset controls.
-   State machine: idle → running → paused → idle (via reset)
-                                            done  (via countdown reaching 0)
+   Section 4: Greeting Module (with Custom Name)
+   ------------------------------------------------------------- */
+
+const GreetingModule = (function () {
+  let _dom = {
+    root: null,
+    timeEl: null,
+    dateEl: null,
+    msgEl: null,
+    btnEditName: null,
+    nameForm: null,
+    nameInput: null,
+    btnCancelName: null,
+  };
+
+  function _render(now) {
+    if (!_dom.root) return;
+
+    _dom.timeEl.textContent = formatTime(now);
+    _dom.dateEl.textContent = formatDate(now);
+
+    const salutation = getGreeting(now.getHours());
+    const userName = StorageModule.loadUserName();
+
+    if (userName) {
+      _dom.msgEl.textContent = `${salutation}, ${userName}!`;
+      _dom.btnEditName.textContent = '✏️ Edit Name';
+    } else {
+      _dom.msgEl.textContent = `${salutation}!`;
+      _dom.btnEditName.textContent = '✏️ Set Name';
+    }
+  }
+
+  function _showNameForm() {
+    _dom.nameInput.value = StorageModule.loadUserName();
+    _dom.nameForm.hidden = false;
+    _dom.nameInput.focus();
+  }
+
+  function _hideNameForm() {
+    _dom.nameForm.hidden = true;
+  }
+
+  function init(root) {
+    _dom.root          = root;
+    _dom.timeEl        = root.querySelector('.greeting-time');
+    _dom.dateEl        = root.querySelector('.greeting-date');
+    _dom.msgEl         = root.querySelector('.greeting-message');
+    _dom.btnEditName   = root.querySelector('#btn-name-edit');
+    _dom.nameForm      = root.querySelector('#greeting-name-form');
+    _dom.nameInput     = root.querySelector('#greeting-name-input');
+    _dom.btnCancelName = root.querySelector('#btn-cancel-name');
+
+    _render(new Date());
+
+    // Auto-update every 60 seconds
+    setInterval(function () {
+      _render(new Date());
+    }, 60000);
+
+    // Toggle name form
+    if (_dom.btnEditName) {
+      _dom.btnEditName.addEventListener('click', function () {
+        if (_dom.nameForm.hidden) {
+          _showNameForm();
+        } else {
+          _hideNameForm();
+        }
+      });
+    }
+
+    // Cancel name form
+    if (_dom.btnCancelName) {
+      _dom.btnCancelName.addEventListener('click', function () {
+        _hideNameForm();
+      });
+    }
+
+    // Submit name form
+    if (_dom.nameForm) {
+      _dom.nameForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const inputName = _dom.nameInput.value.trim().slice(0, 30);
+        StorageModule.saveUserName(inputName);
+        _hideNameForm();
+        _render(new Date());
+      });
+    }
+  }
+
+  return { init };
+})();
+
+/* -------------------------------------------------------------
+   Section 5: Timer Module (Configurable Pomodoro Time)
    ------------------------------------------------------------- */
 
 const TimerModule = (function () {
-  /** In-memory timer state (never persisted). */
+  let _durationMinutes = 25;
+
   const _state = {
     remainingSeconds: 1500,
+    totalSeconds: 1500,
     status: 'idle', // 'idle' | 'running' | 'paused' | 'done'
   };
 
-  /** Active setInterval handle (null when not running). */
   let _intervalId = null;
 
-  /**
-   * Called by setInterval every 1 000 ms while status === 'running'.
-   * Decrements remainingSeconds by 1; when it reaches 0 transitions
-   * to 'done' and stops the interval.
-   */
+  let _dom = {
+    display: null,
+    btnStart: null,
+    btnStop: null,
+    btnReset: null,
+    doneBanner: null,
+    presetBtns: [],
+    customForm: null,
+    customInput: null,
+  };
+
+  function _updatePresetUI(minutes) {
+    _dom.presetBtns.forEach(function (btn) {
+      const btnMin = parseInt(btn.dataset.minutes, 10);
+      if (btnMin === minutes) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  function _setDuration(minutes) {
+    const validMinutes = Math.min(Math.max(1, Math.floor(minutes)), 120);
+    _durationMinutes = validMinutes;
+    _state.totalSeconds = validMinutes * 60;
+
+    // Reset countdown to new duration
+    if (_intervalId !== null) {
+      clearInterval(_intervalId);
+      _intervalId = null;
+    }
+    _state.remainingSeconds = _state.totalSeconds;
+    _state.status = 'idle';
+
+    StorageModule.saveTimerMinutes(validMinutes);
+    _updatePresetUI(validMinutes);
+    _render();
+  }
+
   function _tick() {
     if (_state.status !== 'running') return;
     _state.remainingSeconds -= 1;
@@ -285,22 +517,14 @@ const TimerModule = (function () {
     _render();
   }
 
-  /**
-   * Transitions idle/paused → running.
-   * No-op when already running or done without reset.
-   */
   function start() {
-    if (_state.status === 'running') return; // req 2.7: no-op if already running
-    if (_state.status === 'done')    return; // can't start from done without reset
+    if (_state.status === 'running') return;
+    if (_state.status === 'done') return;
     _state.status = 'running';
     _intervalId = setInterval(_tick, 1000);
     _render();
   }
 
-  /**
-   * Transitions running → paused.
-   * Retains the current remaining time.
-   */
   function stop() {
     if (_state.status !== 'running') return;
     _state.status = 'paused';
@@ -309,44 +533,22 @@ const TimerModule = (function () {
     _render();
   }
 
-  /**
-   * Transitions any state → idle.
-   * Resets remainingSeconds to 1500 (25:00).
-   */
   function reset() {
     if (_intervalId !== null) {
       clearInterval(_intervalId);
       _intervalId = null;
     }
-    _state.remainingSeconds = 1500;
+    _state.remainingSeconds = _state.totalSeconds;
     _state.status = 'idle';
     _render();
   }
 
-  /**
-   * Cached DOM references, populated during init.
-   */
-  let _dom = {
-    display:    null,
-    btnStart:   null,
-    btnStop:    null,
-    btnReset:   null,
-    doneBanner: null,
-  };
-
-  /**
-   * Re-draws the timer widget from current in-memory state.
-   */
   function _render() {
-    if (!_dom.display) return; // guard: not yet initialised
+    if (!_dom.display) return;
 
-    // Update MM:SS display (req 2.1, 2.3, 2.9)
     _dom.display.textContent = formatTimer(_state.remainingSeconds);
-
-    // Disable Start while running (req 2.7, 2.8)
     _dom.btnStart.disabled = (_state.status === 'running');
 
-    // Show/hide completion banner (req 2.6)
     if (_state.status === 'done') {
       _dom.doneBanner.hidden = false;
     } else {
@@ -354,146 +556,161 @@ const TimerModule = (function () {
     }
   }
 
-  /**
-   * Initialises the Timer widget.
-   * Binds button click handlers and renders initial state.
-   * @param {HTMLElement} root  — the #widget-timer element
-   */
   function init(root) {
-    _dom.display    = root.querySelector('#timer-display');
-    _dom.btnStart   = root.querySelector('#btn-start');
-    _dom.btnStop    = root.querySelector('#btn-stop');
-    _dom.btnReset   = root.querySelector('#btn-reset');
-    _dom.doneBanner = root.querySelector('#timer-done-banner');
+    _dom.display     = root.querySelector('#timer-display');
+    _dom.btnStart    = root.querySelector('#btn-start');
+    _dom.btnStop     = root.querySelector('#btn-stop');
+    _dom.btnReset    = root.querySelector('#btn-reset');
+    _dom.doneBanner  = root.querySelector('#timer-done-banner');
+    _dom.presetBtns  = Array.from(root.querySelectorAll('.btn-preset'));
+    _dom.customForm  = root.querySelector('#timer-custom-form');
+    _dom.customInput = root.querySelector('#timer-custom-input');
+
+    // Load saved or default duration
+    const savedDuration = StorageModule.loadTimerMinutes();
+    if (savedDuration) {
+      _durationMinutes = savedDuration;
+    }
+    _state.totalSeconds = _durationMinutes * 60;
+    _state.remainingSeconds = _state.totalSeconds;
 
     _dom.btnStart.addEventListener('click', start);
     _dom.btnStop.addEventListener('click', stop);
     _dom.btnReset.addEventListener('click', reset);
 
-    // Render initial state: 25:00, Start enabled, banner hidden (req 2.1)
+    // Preset click listeners
+    _dom.presetBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const min = parseInt(btn.dataset.minutes, 10);
+        if (!isNaN(min)) {
+          _setDuration(min);
+          if (_dom.customInput) _dom.customInput.value = '';
+        }
+      });
+    });
+
+    // Custom duration form
+    if (_dom.customForm) {
+      _dom.customForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const customVal = parseInt(_dom.customInput.value, 10);
+        if (!isNaN(customVal) && customVal >= 1 && customVal <= 120) {
+          _setDuration(customVal);
+        } else {
+          _dom.customInput.focus();
+        }
+      });
+    }
+
+    _updatePresetUI(_durationMinutes);
     _render();
   }
 
-  return { init, start, stop, reset };
+  return { init, start, stop, reset, setDuration: _setDuration };
 })();
 
 /* -------------------------------------------------------------
-   Section 5: Tasks Module — pure business-logic functions
-   No DOM, no localStorage — these functions only transform arrays.
+   Section 6: Tasks Module (Duplicate Prevention & Sorting)
    ------------------------------------------------------------- */
 
 /**
- * Generates a unique string ID.
- * @returns {string}
+ * Pure functions for task operations
  */
 function _generateId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
-/**
- * Returns a new task list with the given description appended as a new task.
- * Returns the unchanged list when description is blank or longer than 500 chars.
- *
- * @param {Task[]} list        — current task array (not mutated)
- * @param {string} description — description for the new task
- * @returns {Task[]}
- */
 function addTask(list, description) {
   if (isBlank(description) || description.length > 500) {
     return list;
   }
+  // Prevent duplicate task addition
+  if (isDuplicateTask(list, description)) {
+    return list;
+  }
   const newTask = {
     id: _generateId(),
-    description: description,
+    description: description.trim(),
     completed: false,
+    createdAt: Date.now(),
   };
   return list.concat(newTask);
 }
 
-/**
- * Returns a new task list where the task matching `id` has its description
- * replaced with `newDescription`.
- * Returns the unchanged list when newDescription is blank, longer than 500
- * chars, or when no task matches `id`.
- *
- * @param {Task[]} list           — current task array (not mutated)
- * @param {string} id             — id of the task to update
- * @param {string} newDescription — replacement description
- * @returns {Task[]}
- */
 function editTask(list, id, newDescription) {
   if (isBlank(newDescription) || newDescription.length > 500) {
     return list;
   }
+  if (isDuplicateTask(list, newDescription, id)) {
+    return list;
+  }
   return list.map(function (task) {
     if (task.id === id) {
-      return { id: task.id, description: newDescription, completed: task.completed };
+      return { id: task.id, description: newDescription.trim(), completed: task.completed, createdAt: task.createdAt || Date.now() };
     }
     return task;
   });
 }
 
-/**
- * Returns a new task list with the task matching `id` removed.
- * If no task matches, the list is returned unchanged.
- *
- * @param {Task[]} list — current task array (not mutated)
- * @param {string} id  — id of the task to remove
- * @returns {Task[]}
- */
 function deleteTask(list, id) {
   return list.filter(function (task) {
     return task.id !== id;
   });
 }
 
-/**
- * Returns a new task list where the task matching `id` has its `completed`
- * boolean flipped.
- * If no task matches, the list is returned unchanged.
- *
- * @param {Task[]} list — current task array (not mutated)
- * @param {string} id  — id of the task to toggle
- * @returns {Task[]}
- */
 function toggleTask(list, id) {
   return list.map(function (task) {
     if (task.id === id) {
-      return { id: task.id, description: task.description, completed: !task.completed };
+      return { id: task.id, description: task.description, completed: !task.completed, createdAt: task.createdAt || Date.now() };
     }
     return task;
   });
 }
 
-/* -------------------------------------------------------------
-   Section 5 (continued): Tasks Module — DOM / init
-   ------------------------------------------------------------- */
-
 const TasksModule = (function () {
-  /** In-memory task array; loaded from storage on init. */
   let _tasks = [];
+  let _currentSort = 'default';
 
-  /**
-   * Renders the entire task list from _tasks into the <ul> element.
-   * @param {HTMLUListElement} ul
-   */
-  function _renderList(ul) {
+  let _dom = {
+    root: null,
+    ul: null,
+    errorEl: null,
+    addInput: null,
+    sortSelect: null,
+    statsEl: null,
+  };
+
+  function _updateStats() {
+    if (!_dom.statsEl) return;
+    const total = _tasks.length;
+    const completed = _tasks.filter(t => t.completed).length;
+    if (total === 0) {
+      _dom.statsEl.textContent = '0 tasks';
+    } else {
+      _dom.statsEl.textContent = `${completed} of ${total} done`;
+    }
+  }
+
+  function _renderList() {
+    const ul = _dom.ul;
     ul.innerHTML = '';
 
-    _tasks.forEach(function (task) {
+    const displayedTasks = sortTasks(_tasks, _currentSort);
+
+    displayedTasks.forEach(function (task) {
       const li = document.createElement('li');
       li.className = 'task-item' + (task.completed ? ' completed' : '');
       li.dataset.id = task.id;
 
-      // Checkbox toggle — Req 3.6
+      // Checkbox toggle
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.checked = task.completed;
-      checkbox.setAttribute('aria-label', 'Mark task complete');
+      checkbox.setAttribute('aria-label', `Mark task "${task.description}" as ${task.completed ? 'incomplete' : 'complete'}`);
       checkbox.addEventListener('change', function () {
         _tasks = toggleTask(_tasks, task.id);
         StorageModule.saveTasks(_tasks);
-        _renderList(ul);
+        _renderList();
       });
 
       // Description span
@@ -505,24 +722,26 @@ const TasksModule = (function () {
       const actions = document.createElement('div');
       actions.className = 'task-actions';
 
-      // Edit button — Req 3.3
+      // Edit button
       const btnEdit = document.createElement('button');
       btnEdit.className = 'btn-edit';
       btnEdit.textContent = 'Edit';
       btnEdit.type = 'button';
+      btnEdit.setAttribute('aria-label', `Edit task: ${task.description}`);
       btnEdit.addEventListener('click', function () {
-        _activateEditMode(li, task, ul);
+        _activateEditMode(li, task);
       });
 
-      // Delete button — Req 3.7
+      // Delete button
       const btnDelete = document.createElement('button');
       btnDelete.className = 'btn-delete';
       btnDelete.textContent = 'Delete';
       btnDelete.type = 'button';
+      btnDelete.setAttribute('aria-label', `Delete task: ${task.description}`);
       btnDelete.addEventListener('click', function () {
         _tasks = deleteTask(_tasks, task.id);
         StorageModule.saveTasks(_tasks);
-        _renderList(ul);
+        _renderList();
       });
 
       actions.appendChild(btnEdit);
@@ -534,33 +753,23 @@ const TasksModule = (function () {
 
       ul.appendChild(li);
     });
+
+    _updateStats();
   }
 
-  /**
-   * Replaces the description span and action buttons with an inline edit
-   * form containing a pre-filled input, Confirm, and Cancel buttons.
-   * Req 3.3: pre-populate existing description and focus the edit input.
-   * Req 3.5: blank edit rejected, original description preserved.
-   * Req 3.13: cancel restores original display.
-   *
-   * @param {HTMLLIElement} li    — the task item element
-   * @param {Task}          task  — current task data snapshot
-   * @param {HTMLUListElement} ul — the list container (for re-render)
-   */
-  function _activateEditMode(li, task, ul) {
-    // Remove existing span and actions
-    const existingSpan    = li.querySelector('.task-description');
+  function _activateEditMode(li, task) {
+    const existingSpan = li.querySelector('.task-description');
     const existingActions = li.querySelector('.task-actions');
-    if (existingSpan)    li.removeChild(existingSpan);
+    if (existingSpan) li.removeChild(existingSpan);
     if (existingActions) li.removeChild(existingActions);
 
-    // Build inline edit form
     const editForm = document.createElement('div');
     editForm.className = 'task-edit-form';
 
     const editInput = document.createElement('input');
     editInput.type = 'text';
-    editInput.value = task.description;  // Req 3.3: pre-populated
+    editInput.value = task.description;
+    editInput.setAttribute('aria-label', 'Edit task description');
 
     const btnConfirm = document.createElement('button');
     btnConfirm.className = 'btn-confirm';
@@ -577,73 +786,107 @@ const TasksModule = (function () {
     editForm.appendChild(btnCancel);
 
     li.appendChild(editForm);
-
-    // Req 3.3: focus the edit input
     editInput.focus();
 
-    // Confirm: validate, persist, re-render — Req 3.4, 3.5
-    btnConfirm.addEventListener('click', function () {
-      const newDesc = editInput.value;
-      if (isBlank(newDesc) || newDesc.length > 500) {
-        // Req 3.5: reject blank edit; keep focus on input
+    function handleSave() {
+      const newDesc = editInput.value.trim();
+      _dom.errorEl.textContent = '';
+
+      if (isBlank(newDesc)) {
         editInput.focus();
         return;
       }
+      if (newDesc.length > 500) {
+        _dom.errorEl.textContent = 'Task description must be 500 characters or fewer.';
+        editInput.focus();
+        return;
+      }
+      // Check for duplicate on edit
+      if (isDuplicateTask(_tasks, newDesc, task.id)) {
+        _dom.errorEl.textContent = 'A task with this description already exists.';
+        editInput.focus();
+        return;
+      }
+
       _tasks = editTask(_tasks, task.id, newDesc);
       StorageModule.saveTasks(_tasks);
-      _renderList(ul);
+      _renderList();
+    }
+
+    btnConfirm.addEventListener('click', handleSave);
+
+    editInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSave();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        _renderList();
+      }
     });
 
-    // Cancel: discard changes and restore — Req 3.13
     btnCancel.addEventListener('click', function () {
-      _renderList(ul);
+      _renderList();
     });
   }
 
-  /**
-   * Initialises the Tasks widget.
-   * Loads persisted tasks, renders the list, and binds the add-task form.
-   * @param {HTMLElement} root — the #widget-tasks element
-   */
   function init(root) {
-    // Req 3.9: load saved tasks on init; Req 3.10: empty storage → empty list, no error
-    _tasks = StorageModule.loadTasks();
+    _dom.root       = root;
+    _tasks          = StorageModule.loadTasks();
+    _currentSort    = StorageModule.loadTaskSort();
 
-    // Locate DOM elements inside the widget root
-    const form     = root.querySelector('.task-add-form');
-    const addInput = form.querySelector('input[type="text"]');
-    const errorEl  = root.querySelector('.task-error');
-    const ul       = root.querySelector('.task-list');
+    const form      = root.querySelector('.task-add-form');
+    _dom.addInput   = form.querySelector('input[type="text"]');
+    _dom.errorEl    = root.querySelector('.task-error');
+    _dom.ul         = root.querySelector('.task-list');
+    _dom.sortSelect = root.querySelector('#task-sort-select');
+    _dom.statsEl    = root.querySelector('#task-stats');
+
+    // Sync sort dropdown with loaded preference
+    if (_dom.sortSelect) {
+      _dom.sortSelect.value = _currentSort;
+      _dom.sortSelect.addEventListener('change', function (e) {
+        _currentSort = e.target.value;
+        StorageModule.saveTaskSort(_currentSort);
+        _renderList();
+      });
+    }
 
     // Initial render
-    _renderList(ul);
+    _renderList();
 
-    // Bind add-task form submit — Req 3.1, 3.2, 3.12
+    // Add task submit handler
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      const desc = addInput.value;
+      const desc = _dom.addInput.value;
+      _dom.errorEl.textContent = '';
 
-      // Clear any previous error
-      errorEl.textContent = '';
-
-      // Req 3.12: >500 chars → reject with inline error
-      if (desc.length > 500) {
-        errorEl.textContent = 'Task description must be 500 characters or fewer.';
-        return;
-      }
-
-      // Req 3.2: blank → retain focus, no task added
+      // Blank check
       if (isBlank(desc)) {
-        addInput.focus();
+        _dom.addInput.focus();
         return;
       }
 
-      // Valid: add, persist, re-render, clear input — Req 3.1, 3.8
+      // Max length check
+      if (desc.length > 500) {
+        _dom.errorEl.textContent = 'Task description must be 500 characters or fewer.';
+        _dom.addInput.focus();
+        return;
+      }
+
+      // Duplicate prevention check
+      if (isDuplicateTask(_tasks, desc)) {
+        _dom.errorEl.textContent = 'A task with this description already exists.';
+        _dom.addInput.focus();
+        return;
+      }
+
+      // Add task
       _tasks = addTask(_tasks, desc);
       StorageModule.saveTasks(_tasks);
-      _renderList(ul);
-      addInput.value = '';
-      addInput.focus();
+      _renderList();
+      _dom.addInput.value = '';
+      _dom.addInput.focus();
     });
   }
 
@@ -651,127 +894,72 @@ const TasksModule = (function () {
 })();
 
 /* -------------------------------------------------------------
-   Section 6: Links Module — pure business-logic functions
-   No DOM, no localStorage — these functions only transform arrays.
+   Section 7: Links Module
    ------------------------------------------------------------- */
 
-/**
- * Returns a new links array with a new link appended.
- * Rejects (returns unchanged array) when:
- *   - label is blank or longer than 100 chars  (req 4.1, 4.2)
- *   - url fails isValidURL check               (req 4.1, 4.2, 4.3)
- *   - links.length >= 50                        (req 4.10)
- *
- * @param {Link[]} links  — current link array (not mutated)
- * @param {string} label  — display label for the link
- * @param {string} url    — URL for the link (must start with http:// or https://)
- * @returns {Link[]}
- */
 function addLink(links, label, url) {
-  if (isBlank(label) || label.length > 100) {
-    return links;
-  }
-  if (!isValidURL(url)) {
-    return links;
-  }
-  if (links.length >= 50) {
-    return links;
-  }
+  if (isBlank(label) || label.length > 100) return links;
+  if (!isValidURL(url)) return links;
+  if (links.length >= 50) return links;
+
   const newLink = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-    label: label,
-    url: url,
+    label: label.trim(),
+    url: url.trim(),
   };
   return links.concat(newLink);
 }
 
-/**
- * Returns a new links array with the link matching `id` removed.
- * If no link matches, the array is returned unchanged.
- *
- * @param {Link[]} links — current link array (not mutated)
- * @param {string} id    — id of the link to remove
- * @returns {Link[]}
- */
 function deleteLink(links, id) {
   return links.filter(function (link) {
     return link.id !== id;
   });
 }
 
-/* -------------------------------------------------------------
-   Section 6 (continued): Links Module — DOM + init
-   Renders stored links and binds the add-link form.
-   ------------------------------------------------------------- */
-
 const LinksModule = (function () {
-  /** In-memory link collection (mirrors tld_links in localStorage). */
   let _links = [];
 
-  /**
-   * Cached DOM references, populated during init.
-   */
   let _dom = {
-    root:           null,
-    errorBanner:    null, // .links-error-banner  — corrupt-data message
-    saveError:      null, // .links-save-error    — quota / write-failure message
-    linkList:       null, // .link-list           — container for link entries
-    form:           null, // .link-add-form       — the add-link <form>
-    labelInput:     null, // #link-label-input
-    urlInput:       null, // #link-url-input
-    labelError:     null, // #link-label-error    — per-field inline error
-    urlError:       null, // #link-url-error      — per-field inline error
+    root: null,
+    errorBanner: null,
+    saveError: null,
+    linkList: null,
+    form: null,
+    labelInput: null,
+    urlInput: null,
+    labelError: null,
+    urlError: null,
   };
 
-  /* ---- Internal helpers ---- */
-
-  /**
-   * Shows `msg` in the given element and marks it visible (removes hidden).
-   * @param {HTMLElement} el
-   * @param {string}      msg
-   */
   function _showError(el, msg) {
     el.textContent = msg;
     el.hidden = false;
   }
 
-  /**
-   * Clears and hides the given element.
-   * @param {HTMLElement} el
-   */
   function _hideError(el) {
     el.textContent = '';
     el.hidden = true;
   }
 
-  /**
-   * Re-renders the link list area from the current _links array.
-   * Requirement 4.4: each link opens in a new tab.
-   * Requirement 4.8: empty collection → empty panel, no error.
-   */
   function _renderLinks() {
     const list = _dom.linkList;
-    // Clear previous entries
     list.innerHTML = '';
 
     _links.forEach(function (link) {
-      // Outer wrapper
       const entry = document.createElement('div');
       entry.className = 'link-entry';
 
-      // The clickable anchor styled as a pill button
       const anchor = document.createElement('a');
-      anchor.href             = link.url;
-      anchor.textContent      = link.label;
-      anchor.className        = 'link-btn';
-      anchor.target           = '_blank';                // Req 4.4
-      anchor.rel              = 'noopener noreferrer';   // Req 4.4
+      anchor.href = link.url;
+      anchor.textContent = link.label;
+      anchor.className = 'link-btn';
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
       anchor.setAttribute('title', link.url);
 
-      // Delete button beside the link
       const delBtn = document.createElement('button');
-      delBtn.type        = 'button';
-      delBtn.className   = 'btn-delete-link';
+      delBtn.type = 'button';
+      delBtn.className = 'btn-delete-link';
       delBtn.textContent = '✕';
       delBtn.setAttribute('aria-label', 'Delete link: ' + link.label);
 
@@ -779,7 +967,6 @@ const LinksModule = (function () {
         _links = deleteLink(_links, link.id);
         const result = StorageModule.saveLinks(_links);
         if (!result.ok) {
-          // Req 4.6: write failure → show save-error (delete still applied in memory)
           _showError(_dom.saveError, 'Link could not be saved permanently.');
         } else {
           _hideError(_dom.saveError);
@@ -793,49 +980,34 @@ const LinksModule = (function () {
     });
   }
 
-  /**
-   * Validates the add-link form fields.
-   * Shows/hides per-field inline errors.
-   * Returns true if all fields pass, false otherwise.
-   * Requirements 4.2, 4.3, 4.10.
-   */
   function _validateForm() {
     let valid = true;
     const label = _dom.labelInput.value;
-    const url   = _dom.urlInput.value;
+    const url = _dom.urlInput.value;
 
-    // Clear previous errors
     _hideError(_dom.labelError);
     _hideError(_dom.urlError);
     _dom.labelInput.classList.remove('input-error');
     _dom.urlInput.classList.remove('input-error');
 
-    // Req 4.10 — 50-link limit takes priority (shown as label-area error)
     if (_links.length >= 50) {
-      _showError(_dom.labelError,
-        'Maximum of 50 links reached. Delete a link to add a new one.');
+      _showError(_dom.labelError, 'Maximum of 50 links reached. Delete a link to add a new one.');
       _dom.labelInput.classList.add('input-error');
-      valid = false;
-      // No point validating individual fields; return early.
-      return valid;
+      return false;
     }
 
-    // Req 4.2 — empty label
     if (isBlank(label)) {
       _showError(_dom.labelError, 'Label is required.');
       _dom.labelInput.classList.add('input-error');
       valid = false;
     }
 
-    // Req 4.2 — empty URL
     if (isBlank(url)) {
       _showError(_dom.urlError, 'URL is required.');
       _dom.urlInput.classList.add('input-error');
       valid = false;
     } else if (!isValidURL(url)) {
-      // Req 4.3 — invalid scheme
-      _showError(_dom.urlError,
-        'URL must begin with http:// or https://.');
+      _showError(_dom.urlError, 'URL must begin with http:// or https://.');
       _dom.urlInput.classList.add('input-error');
       valid = false;
     }
@@ -843,14 +1015,6 @@ const LinksModule = (function () {
     return valid;
   }
 
-  /* ---- Public API ---- */
-
-  /**
-   * Initialises the Links widget.
-   * Loads persisted data, registers the corrupt-data callback,
-   * renders initial state, and binds the add-link form.
-   * @param {HTMLElement} root  — the #widget-links element
-   */
   function init(root) {
     _dom.root        = root;
     _dom.errorBanner = root.querySelector('.links-error-banner');
@@ -862,61 +1026,42 @@ const LinksModule = (function () {
     _dom.labelError  = root.querySelector('#link-label-error');
     _dom.urlError    = root.querySelector('#link-url-error');
 
-    // Hide error elements initially (they start hidden in HTML too,
-    // but guard here so JS-rendered state is always clean).
     _dom.errorBanner.hidden = true;
     _dom.saveError.hidden   = true;
     _dom.labelError.hidden  = true;
     _dom.urlError.hidden    = true;
 
-    // Req 4.9 — register corrupt-data callback BEFORE loading
     StorageModule.registerOnCorruptLinks(function () {
-      _showError(_dom.errorBanner,
-        'Saved links could not be loaded (data was corrupted). Starting with an empty list.');
+      _showError(_dom.errorBanner, 'Saved links could not be loaded (data was corrupted). Starting with an empty list.');
     });
 
-    // Req 4.7 / 4.8 — load stored links; on missing data get []
     _links = StorageModule.loadLinks();
-
-    // Render whatever we loaded (may be empty — Req 4.8)
     _renderLinks();
 
-    // Bind add-link form submit (Req 4.1–4.3, 4.6, 4.10, 5.2, 5.3)
     _dom.form.addEventListener('submit', function (e) {
       e.preventDefault();
       _hideError(_dom.saveError);
 
-      if (!_validateForm()) {
-        return; // form has inline errors; stay put
-      }
+      if (!_validateForm()) return;
 
       const label = _dom.labelInput.value.trim();
       const url   = _dom.urlInput.value.trim();
 
       const newLinks = addLink(_links, label, url);
 
-      // addLink returns the unchanged array when validation fails internally;
-      // we already validated above so this branch means 50-link limit hit again
-      // (race condition guard).
       if (newLinks === _links) {
-        _showError(_dom.labelError,
-          'Maximum of 50 links reached. Delete a link to add a new one.');
+        _showError(_dom.labelError, 'Maximum of 50 links reached. Delete a link to add a new one.');
         return;
       }
 
-      // Try to persist first; on failure show error but still update in-memory
-      // so the UI reflects the add (the user is warned the write failed).
       const result = StorageModule.saveLinks(newLinks);
       if (!result.ok) {
-        // Req 4.6
         _showError(_dom.saveError, 'Link could not be saved permanently.');
-        // Fall through — still render the link in-memory
       }
 
       _links = newLinks;
       _renderLinks();
 
-      // Clear form inputs on success
       _dom.labelInput.value = '';
       _dom.urlInput.value   = '';
       _dom.labelInput.focus();
@@ -927,16 +1072,19 @@ const LinksModule = (function () {
 })();
 
 /* -------------------------------------------------------------
-   Section 7: Bootstrap — DOMContentLoaded handler
-   Requirements 6.1, 6.9
+   Section 8: Bootstrap — DOMContentLoaded handler
    ------------------------------------------------------------- */
 
 document.addEventListener('DOMContentLoaded', function () {
-  /**
-   * Each entry maps a module to its widget root element ID.
-   * Modules are initialised in the order listed here.
-   */
-  var modules = [
+  // Initialize Theme Switcher
+  try {
+    ThemeModule.init();
+  } catch (err) {
+    console.error('ThemeModule failed to initialise:', err);
+  }
+
+  // Initialize Widgets
+  const modules = [
     { name: 'GreetingModule', module: GreetingModule, rootId: 'widget-greeting' },
     { name: 'TimerModule',    module: TimerModule,    rootId: 'widget-timer'    },
     { name: 'TasksModule',    module: TasksModule,    rootId: 'widget-tasks'    },
@@ -944,15 +1092,14 @@ document.addEventListener('DOMContentLoaded', function () {
   ];
 
   modules.forEach(function (entry) {
-    // Per-widget try/catch so one failure never blocks the others (Req 6.9).
     try {
-      var root = document.getElementById(entry.rootId);
-      entry.module.init(root);
+      const root = document.getElementById(entry.rootId);
+      if (root) {
+        entry.module.init(root);
+      }
     } catch (err) {
       console.error(entry.name + ' failed to initialise:', err);
-      // Show a minimal fallback message in the widget's root element (Req 6.9).
-      // A null root means the element is missing from the page — guard for that too.
-      var fallbackRoot = document.getElementById(entry.rootId);
+      const fallbackRoot = document.getElementById(entry.rootId);
       if (fallbackRoot) {
         fallbackRoot.textContent = 'Could not load widget';
       }

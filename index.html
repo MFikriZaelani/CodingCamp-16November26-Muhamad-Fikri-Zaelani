@@ -4,17 +4,95 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>To-Do List Life Dashboard</title>
+  <!-- Pre-render theme initialization to prevent flash of light theme -->
+  <script>
+    (function () {
+      try {
+        const savedTheme = localStorage.getItem('tld_theme');
+        const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = savedTheme || (systemDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (_) {}
+    })();
+  </script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- Dashboard Header with Title and Theme Switcher -->
+  <header id="dashboard-header">
+    <div class="header-brand">
+      <span class="brand-icon" aria-hidden="true">⚡</span>
+      <h1 class="brand-title">Life Dashboard</h1>
+    </div>
+    <div class="header-actions">
+      <button id="btn-theme-toggle" class="theme-toggle-btn" type="button" aria-label="Toggle dark/light mode" title="Toggle dark/light mode">
+        <span class="theme-icon" aria-hidden="true">🌙</span>
+        <span class="theme-label">Dark Mode</span>
+      </button>
+    </div>
+  </header>
+
   <div id="dashboard-grid">
+    <!-- Greeting Widget -->
     <div id="widget-greeting">
+      <div class="widget-header-row">
+        <h2 class="widget-title">Overview</h2>
+        <button id="btn-name-edit" class="btn-name-edit" type="button" aria-label="Set or edit your name" title="Set or edit your name">
+          ✏️ Edit Name
+        </button>
+      </div>
+
       <p class="greeting-time"></p>
       <p class="greeting-date"></p>
-      <p class="greeting-message"></p>
+      
+      <div class="greeting-message-container">
+        <p class="greeting-message"></p>
+      </div>
+
+      <!-- Inline Name Editor (hidden until user clicks Edit Name) -->
+      <form id="greeting-name-form" class="greeting-name-form" hidden novalidate>
+        <div class="greeting-name-input-group">
+          <input
+            type="text"
+            id="greeting-name-input"
+            placeholder="Enter your name…"
+            maxlength="30"
+            autocomplete="name"
+            aria-label="Your name"
+          >
+          <button type="submit" class="btn-save-name">Save</button>
+          <button type="button" id="btn-cancel-name" class="btn-cancel-name">Cancel</button>
+        </div>
+      </form>
     </div>
+
+    <!-- Focus Timer Widget -->
     <div id="widget-timer">
-      <h2>Focus Timer</h2>
+      <div class="widget-header-row">
+        <h2 class="widget-title">Focus Timer</h2>
+      </div>
+
+      <!-- Pomodoro Duration Presets & Custom Duration -->
+      <div class="timer-duration-bar">
+        <div class="timer-presets" role="group" aria-label="Timer duration presets">
+          <button type="button" class="btn-preset active" data-minutes="25">25m</button>
+          <button type="button" class="btn-preset" data-minutes="50">50m</button>
+          <button type="button" class="btn-preset" data-minutes="15">15m</button>
+          <button type="button" class="btn-preset" data-minutes="5">5m</button>
+        </div>
+        <form id="timer-custom-form" class="timer-custom-form" novalidate>
+          <input
+            type="number"
+            id="timer-custom-input"
+            min="1"
+            max="120"
+            placeholder="Min"
+            aria-label="Custom minutes (1-120)"
+          >
+          <button type="submit" id="btn-set-custom-time" title="Apply custom minutes">Set</button>
+        </form>
+      </div>
+
       <div id="timer-display">25:00</div>
       <div class="timer-controls">
         <button id="btn-start">Start</button>
@@ -25,15 +103,39 @@
         🎉 Session complete! Great work.
       </div>
     </div>
+
+    <!-- Tasks Widget -->
     <div id="widget-tasks">
-      <h2 class="widget-title">Tasks</h2>
+      <div class="widget-header-row">
+        <h2 class="widget-title">Tasks</h2>
+        <span id="task-stats" class="task-stats" aria-live="polite">0 tasks</span>
+      </div>
+
+      <!-- Add Task Form -->
       <form class="task-add-form" novalidate>
         <input type="text" placeholder="Add a new task…" aria-label="New task description" autocomplete="off">
         <button type="submit">Add</button>
       </form>
+
+      <!-- Task Controls: Sort Selection -->
+      <div class="task-toolbar">
+        <label for="task-sort-select" class="task-sort-label">
+          <span class="sort-icon" aria-hidden="true">↕</span> Sort:
+        </label>
+        <select id="task-sort-select" class="task-sort-select" aria-label="Sort tasks">
+          <option value="default">Order Added</option>
+          <option value="az">Alphabetical (A → Z)</option>
+          <option value="za">Alphabetical (Z → A)</option>
+          <option value="incomplete">Incomplete First</option>
+          <option value="completed">Completed First</option>
+        </select>
+      </div>
+
       <p class="task-error" role="alert" aria-live="polite"></p>
       <ul class="task-list" aria-label="Task list"></ul>
     </div>
+
+    <!-- Quick Links Widget -->
     <div id="widget-links">
       <h2 class="widget-title">Quick Links</h2>
 
@@ -79,6 +181,7 @@
       <div class="link-list" aria-label="Saved links" aria-live="polite"></div>
     </div>
   </div>
+
   <script src="js/app.js"></script>
 </body>
 </html>

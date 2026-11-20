@@ -1,11 +1,105 @@
 /* ============================================================
    To-Do List Life Dashboard — style.css
-   Task 2.1: Responsive grid layout
-   Requirements: 6.4, 6.5, 6.6, 6.7, 6.8
+   Modern, Accessible, Responsive Design with Dark / Light Theme
    ============================================================ */
 
 /* ----------------------------------------------------------
-   Reset / base
+   CSS Variables & Color System
+   ---------------------------------------------------------- */
+:root {
+  --bg-page: #f0f2f5;
+  --bg-card: #ffffff;
+  --bg-hover: #f8fafc;
+  --text-main: #1a1a2e;
+  --text-secondary: #374151;
+  --text-muted: #64748b;
+  --border-color: #d1d5db;
+  --card-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  --header-bg: #ffffff;
+  --header-border: #e2e8f0;
+
+  /* Interactive & Accent Colors */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-focus: rgba(37, 99, 235, 0.2);
+  --accent-green: #16a34a;
+  --accent-green-hover: #15803d;
+  --accent-amber: #d97706;
+  --accent-amber-hover: #b45309;
+  --accent-red: #dc2626;
+  --accent-red-hover: #b91c1c;
+
+  /* Preset / Neutral Buttons */
+  --btn-neutral-bg: #e2e8f0;
+  --btn-neutral-hover: #cbd5e1;
+  --btn-neutral-text: #1e293b;
+
+  /* Link Pills */
+  --link-pill-bg: #eff6ff;
+  --link-pill-text: #1d4ed8;
+  --link-pill-border: #bfdbfe;
+  --link-pill-hover-bg: #dbeafe;
+
+  /* Banner Completion */
+  --banner-done-bg: #dcfce7;
+  --banner-done-border: #86efac;
+  --banner-done-text: #14532d;
+
+  /* Task Checkbox & Items */
+  --task-item-hover: #f1f5f9;
+  --task-completed-text: #94a3b8;
+  --badge-bg: #e0f2fe;
+  --badge-text: #0369a1;
+}
+
+[data-theme="dark"] {
+  --bg-page: #0b1120;
+  --bg-card: #1e293b;
+  --bg-hover: #273548;
+  --text-main: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --header-bg: #1e293b;
+  --header-border: #334155;
+
+  /* Interactive & Accent Colors */
+  --primary: #3b82f6;
+  --primary-hover: #60a5fa;
+  --primary-focus: rgba(59, 130, 246, 0.3);
+  --accent-green: #22c55e;
+  --accent-green-hover: #16a34a;
+  --accent-amber: #f59e0b;
+  --accent-amber-hover: #d97706;
+  --accent-red: #f87171;
+  --accent-red-hover: #ef4444;
+
+  /* Preset / Neutral Buttons */
+  --btn-neutral-bg: #334155;
+  --btn-neutral-hover: #475569;
+  --btn-neutral-text: #f1f5f9;
+
+  /* Link Pills */
+  --link-pill-bg: #1e3a8a33;
+  --link-pill-text: #93c5fd;
+  --link-pill-border: #1d4ed8;
+  --link-pill-hover-bg: #1e3a8a66;
+
+  /* Banner Completion */
+  --banner-done-bg: #14532d;
+  --banner-done-border: #16a34a;
+  --banner-done-text: #bbf7d0;
+
+  /* Task Checkbox & Items */
+  --task-item-hover: #283548;
+  --task-completed-text: #64748b;
+  --badge-bg: #1e3a8a55;
+  --badge-text: #7dd3fc;
+}
+
+/* ----------------------------------------------------------
+   Reset & Base
    ---------------------------------------------------------- */
 *,
 *::before,
@@ -15,27 +109,84 @@
   padding: 0;
 }
 
-/* ----------------------------------------------------------
-   Body — Req 6.6: font-size ≥ 16 px
-   Color palette chosen for WCAG 2.1 AA ≥ 4.5:1 — Req 6.7
-   #1a1a2e (dark navy) on #f0f2f5 (light grey) ≈ 12:1
-   ---------------------------------------------------------- */
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
                Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  font-size: 16px;          /* Req 6.6 */
+  font-size: 16px;
   line-height: 1.5;
-  background-color: #f0f2f5;
-  color: #1a1a2e;           /* contrast ratio vs #f0f2f5 ≈ 12:1 — Req 6.7 */
+  background-color: var(--bg-page);
+  color: var(--text-main);
   min-height: 100vh;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* ----------------------------------------------------------
-   Dashboard grid container
+   Dashboard Header Bar
+   ---------------------------------------------------------- */
+#dashboard-header {
+  background-color: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand-icon {
+  font-size: 1.4rem;
+  display: inline-flex;
+}
+
+.brand-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-main);
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 9999px;
+  border: 1.5px solid var(--border-color);
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+}
+
+.theme-toggle-btn:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--primary);
+}
+
+.theme-toggle-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-focus);
+}
+
+.theme-icon {
+  font-size: 1rem;
+}
+
+/* ----------------------------------------------------------
+   Dashboard Grid Container
    ---------------------------------------------------------- */
 #dashboard-grid {
   display: grid;
-  /* Req 6.4: ≥ 2 columns at 768 px+ */
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
   padding: 1.5rem;
@@ -43,67 +194,34 @@ body {
   margin: 0 auto;
 }
 
-/* ----------------------------------------------------------
-   Widgets — basic shell only (visual detail in task 2.2)
-   Req 6.9: missing widget must not break grid structure
-   ---------------------------------------------------------- */
-#widget-greeting,
-#widget-timer,
-#widget-tasks,
-#widget-links {
-  /* Widgets that fail to load render as empty cells;
-     min-height + overflow prevent gap collapse */
-  min-height: 4rem;
-  overflow: hidden;
-}
-
-/* ----------------------------------------------------------
-   Responsive breakpoint — Req 6.5, 6.8
-   Below 768 px: single column, each widget 100 % wide
-   Transition happens via media query (no reload needed)
-   ---------------------------------------------------------- */
 @media (max-width: 767px) {
   #dashboard-grid {
-    grid-template-columns: 1fr;  /* single column */
+    grid-template-columns: 1fr;
     padding: 1rem;
     gap: 1rem;
   }
-
-  #widget-greeting,
-  #widget-timer,
-  #widget-tasks,
-  #widget-links {
-    width: 100%;               /* each widget 100 % wide — Req 6.5 */
-  }
 }
 
-/* ============================================================
-   Task 2.2: Widget-specific styles
-   Requirements: 3.6, 3.11, 6.1, 6.9
-   ============================================================ */
-
 /* ----------------------------------------------------------
-   Card shell — shared by all four widgets
-   Background #ffffff on #f0f2f5 gives enough separation while
-   the main text color (#1a1a2e on #fff) is ≈ 15:1 — Req 6.7
-   Req 6.9: empty-widget graceful collapse (min-height from
-   task 2.1 keeps the cell alive; overflow:hidden clips nothing)
+   Shared Card Shell
    ---------------------------------------------------------- */
 #widget-greeting,
 #widget-timer,
 #widget-tasks,
 #widget-links {
-  background-color: #ffffff;
+  background-color: var(--bg-card);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  min-height: 4rem;
+  overflow: hidden;
 }
 
-/* Req 6.9: if the widget's root is empty (failed to load),
-   let it collapse to its min-height only — no broken gap */
 #widget-greeting:empty,
 #widget-timer:empty,
 #widget-tasks:empty,
@@ -112,59 +230,231 @@ body {
   min-height: 4rem;
   box-shadow: none;
   background-color: transparent;
+  border: none;
 }
 
-/* ----------------------------------------------------------
-   Widget headings
-   ---------------------------------------------------------- */
-.widget-title {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #6b7280;           /* #6b7280 on #fff ≈ 4.6:1 — Req 6.7 */
+/* Widget Header Row */
+.widget-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 0.25rem;
 }
 
+.widget-title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
 
-/* ============================================================
-   Greeting widget
-   ============================================================ */
+/* ----------------------------------------------------------
+   Greeting Widget Styles
+   ---------------------------------------------------------- */
 .greeting-time {
-  font-size: 3rem;
+  font-size: 3.25rem;
   font-weight: 700;
   line-height: 1;
-  color: #1a1a2e;           /* ≈ 15:1 on #fff */
+  color: var(--text-main);
   letter-spacing: -0.02em;
 }
 
 .greeting-date {
-  font-size: 1rem;
-  color: #374151;           /* #374151 on #fff ≈ 10:1 */
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+}
+
+.greeting-message-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .greeting-message {
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
 }
 
+.btn-name-edit {
+  background: none;
+  border: 1px solid var(--border-color);
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
 
-/* ============================================================
-   Timer widget
-   ============================================================ */
+.btn-name-edit:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+/* Inline Name Edit Form */
+.greeting-name-form {
+  margin-top: 0.5rem;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.greeting-name-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.greeting-name-input-group input {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  color: var(--text-main);
+  background-color: var(--bg-card);
+  transition: border-color 0.15s;
+}
+
+.greeting-name-input-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-focus);
+}
+
+.btn-save-name {
+  padding: 0.45rem 0.85rem;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btn-save-name:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-cancel-name {
+  padding: 0.45rem 0.75rem;
+  background-color: var(--btn-neutral-bg);
+  color: var(--btn-neutral-text);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btn-cancel-name:hover {
+  background-color: var(--btn-neutral-hover);
+}
+
+/* ----------------------------------------------------------
+   Focus Timer Widget Styles
+   ---------------------------------------------------------- */
+/* Pomodoro Duration Bar (Presets + Custom Form) */
+.timer-duration-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background-color: var(--bg-page);
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.timer-presets {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.btn-preset {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-preset:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--primary);
+}
+
+.btn-preset.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  box-shadow: 0 1px 4px var(--primary-focus);
+}
+
+.timer-custom-form {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.timer-custom-form input[type="number"] {
+  width: 4rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  text-align: center;
+  background-color: var(--bg-card);
+  color: var(--text-main);
+}
+
+.timer-custom-form input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.timer-custom-form button {
+  padding: 0.3rem 0.6rem;
+  background-color: var(--btn-neutral-bg);
+  color: var(--btn-neutral-text);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.timer-custom-form button:hover {
+  background-color: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+/* Timer Display */
 #timer-display {
-  font-size: 3.5rem;
+  font-size: 3.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: #1a1a2e;
+  color: var(--text-main);
   text-align: center;
-  font-variant-numeric: tabular-nums;  /* digits don't shift width */
+  font-variant-numeric: tabular-nums;
   line-height: 1;
   padding: 0.5rem 0;
 }
 
-/* Timer buttons row */
+/* Timer Controls Row */
 .timer-controls {
   display: flex;
   gap: 0.5rem;
@@ -177,7 +467,7 @@ body {
 #btn-reset {
   flex: 1 1 5rem;
   max-width: 7rem;
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1rem;
   border: none;
   border-radius: 6px;
   font-size: 0.9375rem;
@@ -186,35 +476,34 @@ body {
   transition: background-color 0.15s, opacity 0.15s;
 }
 
-/* Start — green, text on dark background */
 #btn-start {
-  background-color: #16a34a; /* #fff on #16a34a ≈ 5.4:1 — Req 6.7 */
+  background-color: var(--accent-green);
   color: #ffffff;
 }
+
 #btn-start:hover:not(:disabled) {
-  background-color: #15803d;
+  background-color: var(--accent-green-hover);
 }
 
-/* Stop — amber */
 #btn-stop {
-  background-color: #d97706; /* #fff on #d97706 ≈ 3.3:1 — amber needs dark text */
-  color: #1a1a2e;            /* #1a1a2e on #d97706 ≈ 7.1:1 — Req 6.7 */
+  background-color: var(--accent-amber);
+  color: #1a1a2e;
 }
+
 #btn-stop:hover:not(:disabled) {
-  background-color: #b45309;
-  color: #ffffff;            /* #fff on #b45309 ≈ 5.5:1 */
+  background-color: var(--accent-amber-hover);
+  color: #ffffff;
 }
 
-/* Reset — neutral */
 #btn-reset {
-  background-color: #e5e7eb;
-  color: #1a1a2e;            /* ≈ 11:1 on #e5e7eb */
-}
-#btn-reset:hover:not(:disabled) {
-  background-color: #d1d5db;
+  background-color: var(--btn-neutral-bg);
+  color: var(--btn-neutral-text);
 }
 
-/* Disabled state (Start is disabled while running — Req 2.8) */
+#btn-reset:hover:not(:disabled) {
+  background-color: var(--btn-neutral-hover);
+}
+
 #btn-start:disabled,
 #btn-stop:disabled,
 #btn-reset:disabled {
@@ -222,25 +511,37 @@ body {
   cursor: not-allowed;
 }
 
-/* Completion banner — Req 2.6 */
+/* Completion Banner */
 #timer-done-banner {
-  display: none;             /* shown by JS when status = done */
-  background-color: #dcfce7;
-  color: #14532d;            /* #14532d on #dcfce7 ≈ 8.6:1 — Req 6.7 */
-  border: 1px solid #86efac;
+  display: none;
+  background-color: var(--banner-done-bg);
+  color: var(--banner-done-text);
+  border: 1px solid var(--banner-done-border);
   border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   text-align: center;
   font-weight: 600;
   font-size: 0.9375rem;
+  animation: bounceIn 0.3s ease-out;
 }
 
+#timer-done-banner:not([hidden]) {
+  display: block;
+}
 
-/* ============================================================
-   Tasks widget
-   ============================================================ */
+/* ----------------------------------------------------------
+   Tasks Widget Styles
+   ---------------------------------------------------------- */
+.task-stats {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--badge-text);
+  background-color: var(--badge-bg);
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+}
 
-/* Add-task form row */
+/* Add-task Form */
 .task-add-form {
   display: flex;
   gap: 0.5rem;
@@ -249,24 +550,24 @@ body {
 .task-add-form input[type="text"] {
   flex: 1;
   padding: 0.5rem 0.75rem;
-  border: 1.5px solid #d1d5db;
+  border: 1.5px solid var(--border-color);
   border-radius: 6px;
   font-size: 1rem;
-  color: #1a1a2e;
-  background-color: #fff;
+  color: var(--text-main);
+  background-color: var(--bg-card);
   transition: border-color 0.15s;
 }
 
 .task-add-form input[type="text"]:focus {
   outline: none;
-  border-color: #2563eb;    /* visible focus ring */
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-focus);
 }
 
 .task-add-form button {
-  padding: 0.5rem 1rem;
-  background-color: #2563eb;
-  color: #ffffff;            /* #fff on #2563eb ≈ 5.9:1 — Req 6.7 */
+  padding: 0.5rem 1.1rem;
+  background-color: var(--primary);
+  color: #ffffff;
   border: none;
   border-radius: 6px;
   font-size: 0.9375rem;
@@ -277,67 +578,104 @@ body {
 }
 
 .task-add-form button:hover {
-  background-color: #1d4ed8;
+  background-color: var(--primary-hover);
 }
 
-/* Scrollable task list — Req 3.11: ≥ 100 items visible & scrollable */
+/* Task Toolbar (Sort Control) */
+.task-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+}
+
+.task-sort-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.task-sort-select {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1.5px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.task-sort-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-focus);
+}
+
+/* Task Error Message */
+.task-error {
+  font-size: 0.875rem;
+  color: var(--accent-red);
+  min-height: 1.25rem;
+}
+
+/* Scrollable Task List */
 .task-list {
   list-style: none;
   overflow-y: auto;
-  max-height: 20rem;        /* ~8-9 items visible; remainder scrollable */
+  max-height: 20rem;
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
+  padding-right: 0.25rem;
 }
 
-/* Individual task item */
 .task-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.25rem;
-  border-radius: 4px;
-  transition: background-color 0.1s;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: background-color 0.1s, border-color 0.1s;
 }
 
 .task-item:hover {
-  background-color: #f9fafb;
+  background-color: var(--task-item-hover);
+  border-color: var(--border-color);
 }
 
-/* Checkbox */
 .task-item input[type="checkbox"] {
   flex-shrink: 0;
-  width: 1.125rem;
-  height: 1.125rem;
-  accent-color: #2563eb;
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--primary);
   cursor: pointer;
 }
 
-/* Task description — prevents text clipping (Req 3.11) */
 .task-item .task-description {
   flex: 1;
-  font-size: 1rem;
-  color: #1a1a2e;
+  font-size: 0.95rem;
+  color: var(--text-main);
   word-break: break-word;
   overflow-wrap: break-word;
-  min-width: 0;             /* allows flex child to shrink below content width */
+  min-width: 0;
 }
 
-/* Completed task — Req 3.6: visually distinct from incomplete */
 .task-item.completed .task-description {
   text-decoration: line-through;
-  color: #9ca3af;           /* #9ca3af on #fff ≈ 2.5:1 — decorative muted text;
-                               strikethrough conveys status independently */
+  color: var(--task-completed-text);
 }
 
-/* Per WCAG 1.4.1, using strikethrough + color together is acceptable
-   because the completion status is also conveyed by the checkbox state,
-   so the distinction does not rely on color alone. */
 .task-item.completed {
-  opacity: 0.7;
+  opacity: 0.72;
 }
 
-/* Task action buttons (edit / delete) */
 .task-item .task-actions {
   display: flex;
   gap: 0.25rem;
@@ -346,29 +684,29 @@ body {
 
 .task-item .btn-edit,
 .task-item .btn-delete {
-  padding: 0.2rem 0.5rem;
-  border: 1px solid #d1d5db;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background-color: #f9fafb;
-  color: #374151;           /* #374151 on #f9fafb ≈ 9.7:1 — Req 6.7 */
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
   font-size: 0.8125rem;
   cursor: pointer;
-  transition: background-color 0.15s, color 0.15s;
+  transition: all 0.15s ease;
 }
 
 .task-item .btn-edit:hover {
-  background-color: #2563eb;
+  background-color: var(--primary);
   color: #ffffff;
-  border-color: #2563eb;
+  border-color: var(--primary);
 }
 
 .task-item .btn-delete:hover {
-  background-color: #dc2626;
-  color: #ffffff;           /* #fff on #dc2626 ≈ 5.1:1 — Req 6.7 */
-  border-color: #dc2626;
+  background-color: var(--accent-red);
+  color: #ffffff;
+  border-color: var(--accent-red);
 }
 
-/* Inline edit row */
+/* Inline Edit Row */
 .task-item .task-edit-form {
   display: flex;
   flex: 1;
@@ -378,17 +716,18 @@ body {
 
 .task-item .task-edit-form input[type="text"] {
   flex: 1;
-  padding: 0.3rem 0.5rem;
-  border: 1.5px solid #2563eb;
+  padding: 0.35rem 0.55rem;
+  border: 1.5px solid var(--primary);
   border-radius: 4px;
-  font-size: 1rem;
-  color: #1a1a2e;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  background-color: var(--bg-card);
   min-width: 0;
 }
 
 .task-item .btn-confirm,
 .task-item .btn-cancel {
-  padding: 0.2rem 0.5rem;
+  padding: 0.3rem 0.6rem;
   border: none;
   border-radius: 4px;
   font-size: 0.8125rem;
@@ -397,27 +736,26 @@ body {
 }
 
 .task-item .btn-confirm {
-  background-color: #16a34a;
-  color: #ffffff;           /* ≈ 5.4:1 */
+  background-color: var(--accent-green);
+  color: #ffffff;
+}
+
+.task-item .btn-confirm:hover {
+  background-color: var(--accent-green-hover);
 }
 
 .task-item .btn-cancel {
-  background-color: #e5e7eb;
-  color: #1a1a2e;
+  background-color: var(--btn-neutral-bg);
+  color: var(--btn-neutral-text);
 }
 
-/* Error / info messages inline */
-.task-error {
-  font-size: 0.875rem;
-  color: #dc2626;           /* #dc2626 on #fff ≈ 5.1:1 — Req 6.7 */
+.task-item .btn-cancel:hover {
+  background-color: var(--btn-neutral-hover);
 }
 
-
-/* ============================================================
-   Quick Links widget
-   ============================================================ */
-
-/* Add-link form */
+/* ----------------------------------------------------------
+   Quick Links Widget Styles
+   ---------------------------------------------------------- */
 .link-add-form {
   display: flex;
   flex-direction: column;
@@ -433,33 +771,34 @@ body {
 .link-add-form input[type="url"] {
   flex: 1;
   padding: 0.5rem 0.75rem;
-  border: 1.5px solid #d1d5db;
+  border: 1.5px solid var(--border-color);
   border-radius: 6px;
   font-size: 1rem;
-  color: #1a1a2e;
+  color: var(--text-main);
+  background-color: var(--bg-card);
   transition: border-color 0.15s;
 }
 
 .link-add-form input:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-focus);
 }
 
 .link-add-form input.input-error {
-  border-color: #dc2626;
+  border-color: var(--accent-red);
 }
 
 .link-add-form .field-error {
   font-size: 0.8125rem;
-  color: #dc2626;           /* ≈ 5.1:1 on #fff — Req 6.7 */
+  color: var(--accent-red);
   margin-top: -0.25rem;
 }
 
 .link-add-form button[type="submit"] {
   align-self: flex-end;
   padding: 0.5rem 1rem;
-  background-color: #2563eb;
+  background-color: var(--primary);
   color: #ffffff;
   border: none;
   border-radius: 6px;
@@ -470,10 +809,9 @@ body {
 }
 
 .link-add-form button[type="submit"]:hover {
-  background-color: #1d4ed8;
+  background-color: var(--primary-hover);
 }
 
-/* Link buttons grid */
 .link-list {
   display: flex;
   flex-wrap: wrap;
@@ -482,20 +820,18 @@ body {
   max-height: 16rem;
 }
 
-/* Each link entry = anchor button + delete button */
 .link-entry {
   display: flex;
   align-items: center;
   gap: 0.25rem;
 }
 
-/* The <a> styled as a pill button — Req 4.4: opens in new tab */
 .link-entry .link-btn {
   display: inline-block;
-  padding: 0.4rem 0.75rem;
-  background-color: #eff6ff;
-  color: #1d4ed8;           /* #1d4ed8 on #eff6ff ≈ 7.3:1 — Req 6.7 */
-  border: 1.5px solid #bfdbfe;
+  padding: 0.4rem 0.8rem;
+  background-color: var(--link-pill-bg);
+  color: var(--link-pill-text);
+  border: 1.5px solid var(--link-pill-border);
   border-radius: 20px;
   font-size: 0.9375rem;
   font-weight: 500;
@@ -509,17 +845,15 @@ body {
 }
 
 .link-entry .link-btn:hover {
-  background-color: #dbeafe;
-  border-color: #93c5fd;
+  background-color: var(--link-pill-hover-bg);
 }
 
-/* Delete button beside each link */
 .link-entry .btn-delete-link {
   padding: 0.3rem 0.5rem;
-  border: 1px solid #fca5a5;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background-color: #fff;
-  color: #dc2626;           /* #dc2626 on #fff ≈ 5.1:1 — Req 6.7 */
+  background-color: var(--bg-card);
+  color: var(--accent-red);
   font-size: 0.8125rem;
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
@@ -527,17 +861,42 @@ body {
 }
 
 .link-entry .btn-delete-link:hover {
-  background-color: #dc2626;
+  background-color: var(--accent-red);
   color: #ffffff;
+  border-color: var(--accent-red);
 }
 
-/* Error / status banners inside links widget */
 .links-error-banner,
 .links-save-error {
   font-size: 0.875rem;
-  color: #dc2626;
-  background-color: #fef2f2;
-  border: 1px solid #fca5a5;
+  color: var(--accent-red);
+  background-color: rgba(220, 38, 38, 0.1);
+  border: 1px solid var(--accent-red);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
+}
+
+/* ----------------------------------------------------------
+   Animations
+   ---------------------------------------------------------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  from {
+    transform: scale(0.97);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
