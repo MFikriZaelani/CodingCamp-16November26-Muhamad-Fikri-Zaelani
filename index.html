@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List Life Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="dashboard-grid">
+    <div id="widget-greeting">
+      <p class="greeting-time"></p>
+      <p class="greeting-date"></p>
+      <p class="greeting-message"></p>
+    </div>
+    <div id="widget-timer">
+      <h2>Focus Timer</h2>
+      <div id="timer-display">25:00</div>
+      <div class="timer-controls">
+        <button id="btn-start">Start</button>
+        <button id="btn-stop">Stop</button>
+        <button id="btn-reset">Reset</button>
+      </div>
+      <div id="timer-done-banner" hidden>
+        🎉 Session complete! Great work.
+      </div>
+    </div>
+    <div id="widget-tasks">
+      <h2 class="widget-title">Tasks</h2>
+      <form class="task-add-form" novalidate>
+        <input type="text" placeholder="Add a new task…" aria-label="New task description" autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+      <p class="task-error" role="alert" aria-live="polite"></p>
+      <ul class="task-list" aria-label="Task list"></ul>
+    </div>
+    <div id="widget-links">
+      <h2 class="widget-title">Quick Links</h2>
+
+      <!-- Corrupt-data error banner (hidden until StorageModule fires onCorruptLinks) -->
+      <div class="links-error-banner" role="alert" hidden></div>
+
+      <!-- Add-link form -->
+      <form class="link-add-form" novalidate>
+        <!-- Label field -->
+        <div class="link-form-row">
+          <input
+            type="text"
+            id="link-label-input"
+            name="link-label"
+            placeholder="Label (e.g. GitHub)"
+            maxlength="100"
+            autocomplete="off"
+            aria-label="Link label"
+          >
+        </div>
+        <div id="link-label-error" class="field-error" role="alert" hidden></div>
+
+        <!-- URL field -->
+        <div class="link-form-row">
+          <input
+            type="url"
+            id="link-url-input"
+            name="link-url"
+            placeholder="URL (https://…)"
+            autocomplete="off"
+            aria-label="Link URL"
+          >
+        </div>
+        <div id="link-url-error" class="field-error" role="alert" hidden></div>
+
+        <button type="submit">Add Link</button>
+      </form>
+
+      <!-- Save-failure inline error (hidden until a write fails) -->
+      <div class="links-save-error" role="alert" hidden></div>
+
+      <!-- Link entries rendered here by LinksModule -->
+      <div class="link-list" aria-label="Saved links" aria-live="polite"></div>
+    </div>
+  </div>
+  <script src="js/app.js"></script>
+</body>
+</html>

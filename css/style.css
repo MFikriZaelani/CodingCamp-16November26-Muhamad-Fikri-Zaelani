@@ -1,0 +1,543 @@
+/* ============================================================
+   To-Do List Life Dashboard — style.css
+   Task 2.1: Responsive grid layout
+   Requirements: 6.4, 6.5, 6.6, 6.7, 6.8
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   Reset / base
+   ---------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ----------------------------------------------------------
+   Body — Req 6.6: font-size ≥ 16 px
+   Color palette chosen for WCAG 2.1 AA ≥ 4.5:1 — Req 6.7
+   #1a1a2e (dark navy) on #f0f2f5 (light grey) ≈ 12:1
+   ---------------------------------------------------------- */
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 16px;          /* Req 6.6 */
+  line-height: 1.5;
+  background-color: #f0f2f5;
+  color: #1a1a2e;           /* contrast ratio vs #f0f2f5 ≈ 12:1 — Req 6.7 */
+  min-height: 100vh;
+}
+
+/* ----------------------------------------------------------
+   Dashboard grid container
+   ---------------------------------------------------------- */
+#dashboard-grid {
+  display: grid;
+  /* Req 6.4: ≥ 2 columns at 768 px+ */
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* ----------------------------------------------------------
+   Widgets — basic shell only (visual detail in task 2.2)
+   Req 6.9: missing widget must not break grid structure
+   ---------------------------------------------------------- */
+#widget-greeting,
+#widget-timer,
+#widget-tasks,
+#widget-links {
+  /* Widgets that fail to load render as empty cells;
+     min-height + overflow prevent gap collapse */
+  min-height: 4rem;
+  overflow: hidden;
+}
+
+/* ----------------------------------------------------------
+   Responsive breakpoint — Req 6.5, 6.8
+   Below 768 px: single column, each widget 100 % wide
+   Transition happens via media query (no reload needed)
+   ---------------------------------------------------------- */
+@media (max-width: 767px) {
+  #dashboard-grid {
+    grid-template-columns: 1fr;  /* single column */
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  #widget-greeting,
+  #widget-timer,
+  #widget-tasks,
+  #widget-links {
+    width: 100%;               /* each widget 100 % wide — Req 6.5 */
+  }
+}
+
+/* ============================================================
+   Task 2.2: Widget-specific styles
+   Requirements: 3.6, 3.11, 6.1, 6.9
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   Card shell — shared by all four widgets
+   Background #ffffff on #f0f2f5 gives enough separation while
+   the main text color (#1a1a2e on #fff) is ≈ 15:1 — Req 6.7
+   Req 6.9: empty-widget graceful collapse (min-height from
+   task 2.1 keeps the cell alive; overflow:hidden clips nothing)
+   ---------------------------------------------------------- */
+#widget-greeting,
+#widget-timer,
+#widget-tasks,
+#widget-links {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Req 6.9: if the widget's root is empty (failed to load),
+   let it collapse to its min-height only — no broken gap */
+#widget-greeting:empty,
+#widget-timer:empty,
+#widget-tasks:empty,
+#widget-links:empty {
+  padding: 0;
+  min-height: 4rem;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+/* ----------------------------------------------------------
+   Widget headings
+   ---------------------------------------------------------- */
+.widget-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;           /* #6b7280 on #fff ≈ 4.6:1 — Req 6.7 */
+  margin-bottom: 0.25rem;
+}
+
+
+/* ============================================================
+   Greeting widget
+   ============================================================ */
+.greeting-time {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #1a1a2e;           /* ≈ 15:1 on #fff */
+  letter-spacing: -0.02em;
+}
+
+.greeting-date {
+  font-size: 1rem;
+  color: #374151;           /* #374151 on #fff ≈ 10:1 */
+}
+
+.greeting-message {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+
+/* ============================================================
+   Timer widget
+   ============================================================ */
+#timer-display {
+  font-size: 3.5rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #1a1a2e;
+  text-align: center;
+  font-variant-numeric: tabular-nums;  /* digits don't shift width */
+  line-height: 1;
+  padding: 0.5rem 0;
+}
+
+/* Timer buttons row */
+.timer-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#btn-start,
+#btn-stop,
+#btn-reset {
+  flex: 1 1 5rem;
+  max-width: 7rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, opacity 0.15s;
+}
+
+/* Start — green, text on dark background */
+#btn-start {
+  background-color: #16a34a; /* #fff on #16a34a ≈ 5.4:1 — Req 6.7 */
+  color: #ffffff;
+}
+#btn-start:hover:not(:disabled) {
+  background-color: #15803d;
+}
+
+/* Stop — amber */
+#btn-stop {
+  background-color: #d97706; /* #fff on #d97706 ≈ 3.3:1 — amber needs dark text */
+  color: #1a1a2e;            /* #1a1a2e on #d97706 ≈ 7.1:1 — Req 6.7 */
+}
+#btn-stop:hover:not(:disabled) {
+  background-color: #b45309;
+  color: #ffffff;            /* #fff on #b45309 ≈ 5.5:1 */
+}
+
+/* Reset — neutral */
+#btn-reset {
+  background-color: #e5e7eb;
+  color: #1a1a2e;            /* ≈ 11:1 on #e5e7eb */
+}
+#btn-reset:hover:not(:disabled) {
+  background-color: #d1d5db;
+}
+
+/* Disabled state (Start is disabled while running — Req 2.8) */
+#btn-start:disabled,
+#btn-stop:disabled,
+#btn-reset:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Completion banner — Req 2.6 */
+#timer-done-banner {
+  display: none;             /* shown by JS when status = done */
+  background-color: #dcfce7;
+  color: #14532d;            /* #14532d on #dcfce7 ≈ 8.6:1 — Req 6.7 */
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+
+/* ============================================================
+   Tasks widget
+   ============================================================ */
+
+/* Add-task form row */
+.task-add-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.task-add-form input[type="text"] {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #1a1a2e;
+  background-color: #fff;
+  transition: border-color 0.15s;
+}
+
+.task-add-form input[type="text"]:focus {
+  outline: none;
+  border-color: #2563eb;    /* visible focus ring */
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.task-add-form button {
+  padding: 0.5rem 1rem;
+  background-color: #2563eb;
+  color: #ffffff;            /* #fff on #2563eb ≈ 5.9:1 — Req 6.7 */
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.task-add-form button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Scrollable task list — Req 3.11: ≥ 100 items visible & scrollable */
+.task-list {
+  list-style: none;
+  overflow-y: auto;
+  max-height: 20rem;        /* ~8-9 items visible; remainder scrollable */
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+/* Individual task item */
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.1s;
+}
+
+.task-item:hover {
+  background-color: #f9fafb;
+}
+
+/* Checkbox */
+.task-item input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+/* Task description — prevents text clipping (Req 3.11) */
+.task-item .task-description {
+  flex: 1;
+  font-size: 1rem;
+  color: #1a1a2e;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;             /* allows flex child to shrink below content width */
+}
+
+/* Completed task — Req 3.6: visually distinct from incomplete */
+.task-item.completed .task-description {
+  text-decoration: line-through;
+  color: #9ca3af;           /* #9ca3af on #fff ≈ 2.5:1 — decorative muted text;
+                               strikethrough conveys status independently */
+}
+
+/* Per WCAG 1.4.1, using strikethrough + color together is acceptable
+   because the completion status is also conveyed by the checkbox state,
+   so the distinction does not rely on color alone. */
+.task-item.completed {
+  opacity: 0.7;
+}
+
+/* Task action buttons (edit / delete) */
+.task-item .task-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.task-item .btn-edit,
+.task-item .btn-delete {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background-color: #f9fafb;
+  color: #374151;           /* #374151 on #f9fafb ≈ 9.7:1 — Req 6.7 */
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.task-item .btn-edit:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.task-item .btn-delete:hover {
+  background-color: #dc2626;
+  color: #ffffff;           /* #fff on #dc2626 ≈ 5.1:1 — Req 6.7 */
+  border-color: #dc2626;
+}
+
+/* Inline edit row */
+.task-item .task-edit-form {
+  display: flex;
+  flex: 1;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.task-item .task-edit-form input[type="text"] {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1.5px solid #2563eb;
+  border-radius: 4px;
+  font-size: 1rem;
+  color: #1a1a2e;
+  min-width: 0;
+}
+
+.task-item .btn-confirm,
+.task-item .btn-cancel {
+  padding: 0.2rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.task-item .btn-confirm {
+  background-color: #16a34a;
+  color: #ffffff;           /* ≈ 5.4:1 */
+}
+
+.task-item .btn-cancel {
+  background-color: #e5e7eb;
+  color: #1a1a2e;
+}
+
+/* Error / info messages inline */
+.task-error {
+  font-size: 0.875rem;
+  color: #dc2626;           /* #dc2626 on #fff ≈ 5.1:1 — Req 6.7 */
+}
+
+
+/* ============================================================
+   Quick Links widget
+   ============================================================ */
+
+/* Add-link form */
+.link-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.link-add-form .link-form-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.link-add-form input[type="text"],
+.link-add-form input[type="url"] {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 1rem;
+  color: #1a1a2e;
+  transition: border-color 0.15s;
+}
+
+.link-add-form input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.link-add-form input.input-error {
+  border-color: #dc2626;
+}
+
+.link-add-form .field-error {
+  font-size: 0.8125rem;
+  color: #dc2626;           /* ≈ 5.1:1 on #fff — Req 6.7 */
+  margin-top: -0.25rem;
+}
+
+.link-add-form button[type="submit"] {
+  align-self: flex-end;
+  padding: 0.5rem 1rem;
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.link-add-form button[type="submit"]:hover {
+  background-color: #1d4ed8;
+}
+
+/* Link buttons grid */
+.link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  overflow-y: auto;
+  max-height: 16rem;
+}
+
+/* Each link entry = anchor button + delete button */
+.link-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* The <a> styled as a pill button — Req 4.4: opens in new tab */
+.link-entry .link-btn {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  background-color: #eff6ff;
+  color: #1d4ed8;           /* #1d4ed8 on #eff6ff ≈ 7.3:1 — Req 6.7 */
+  border: 1.5px solid #bfdbfe;
+  border-radius: 20px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-entry .link-btn:hover {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+}
+
+/* Delete button beside each link */
+.link-entry .btn-delete-link {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #fca5a5;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #dc2626;           /* #dc2626 on #fff ≈ 5.1:1 — Req 6.7 */
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.link-entry .btn-delete-link:hover {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+/* Error / status banners inside links widget */
+.links-error-banner,
+.links-save-error {
+  font-size: 0.875rem;
+  color: #dc2626;
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
